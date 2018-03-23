@@ -6,6 +6,7 @@ import { BackHandler } from './PlatformHelpers';
 import NavigationActions from './NavigationActions';
 import addNavigationHelpers from './addNavigationHelpers';
 import invariant from './utils/invariant';
+import docsUrl from './utils/docsUrl';
 
 function isStateful(props) {
   return !props.navigation;
@@ -31,6 +32,8 @@ function validateProps(props) {
     );
   }
 }
+
+let statefulContainersCounter = 0;
 
 /**
  * Create an HOC that injects the navigation and manages the navigation state
@@ -151,8 +154,17 @@ export default function createNavigationContainer(Component) {
         return;
       }
 
+      if (__DEV__ && !this.props.detached) {
+        if (statefulContainersCounter > 0) {
+          console.error(
+            `You should only render one navigator explicitly in your app, and other navigators should by rendered by including them in that navigator. Full details at: ${docsUrl(
+              'common-mistakes.html#explicitly-rendering-more-than-one-navigator'
+            )}`
+          );
+        }
+      }
+      statefulContainersCounter++;
       Linking.addEventListener('url', this._handleOpenURL);
-
       Linking.getInitialURL().then(url => url && this._handleOpenURL({ url }));
 
       this._actionEventSubscribers.forEach(subscriber =>
@@ -169,6 +181,10 @@ export default function createNavigationContainer(Component) {
       this._isMounted = false;
       Linking.removeEventListener('url', this._handleOpenURL);
       this.subs && this.subs.remove();
+
+      if (this._isStateful()) {
+        statefulContainersCounter--;
+      }
     }
 
     // Per-tick temporary storage for state.nav
